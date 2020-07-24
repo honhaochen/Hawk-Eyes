@@ -118,7 +118,9 @@ export const editFoodCentresData = (arr) => {
         db.collection("foodCentres")
             .doc(id)
             .set(updatedFoodCentre)
-            .then(dispatch(editFoodCentre()))
+            .then(function () {
+                dispatch(editFoodCentre());
+            })
             .catch(function (error) {
                 console.error("Error writing document: ", error);
             });

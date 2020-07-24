@@ -26,8 +26,10 @@ export function generateGrid(number) {
             id: i,
             isStored: false,
             nature: "none",
-            isBooked: false,
+            isBooked: false, //seat booked
             isStoreBooked: false,
+            stallId: null,
+            seatId: null,
         };
         grid[i] = cell;
     }
@@ -67,6 +69,7 @@ class SeatingPlan extends React.Component {
             isEditing: false,
             isBooking: false,
             isStoreBooking: false,
+            bookedOrReservedOnce: false,
         };
     }
 
@@ -292,86 +295,201 @@ class SeatingPlan extends React.Component {
     };
 
     bookingCellPress = (c) => {
-        if (c.nature == "none" || c.nature == "stall" || c.isBooked) {
+        if (c.nature == "none" || c.nature == "stall") {
             return;
         }
-        const cell = this.state.grid[c.id];
-        const nature = cell.nature;
-        const newCell = { ...cell, isBooked: true };
-        const newGrid = this.state.grid;
-        newGrid[c.id] = newCell;
-        this.setState({
-            grid: newGrid,
-        });
+        if (
+            this.state.selectedIndex == 6 &&
+            c.isBooked &&
+            c.seatId == this.props.user.userId
+        ) {
+            const cell = this.state.grid[c.id];
+            const nature = cell.nature;
+            const newCell = { ...cell, isBooked: false, seatId: null };
+            const newGrid = this.state.grid;
+            newGrid[c.id] = newCell;
+            this.setState({
+                grid: newGrid,
+            });
 
-        if (c.id - 1 >= 1) {
-            const cellLeft = this.state.grid[c.id - 1];
-            if (cellLeft.nature == nature) {
-                this.bookingCellPress(cellLeft);
+            if (c.id - 1 >= 1) {
+                const cellLeft = this.state.grid[c.id - 1];
+                if (cellLeft.nature == nature) {
+                    this.bookingCellPress(cellLeft);
+                }
             }
-        }
 
-        if (c.id + 1 < 420) {
-            const cellRight = this.state.grid[c.id + 1];
-            if (cellRight.nature == nature) {
-                this.bookingCellPress(cellRight);
+            if (c.id + 1 < 420) {
+                const cellRight = this.state.grid[c.id + 1];
+                if (cellRight.nature == nature) {
+                    this.bookingCellPress(cellRight);
+                }
             }
-        }
 
-        if (c.id + 15 <= 420) {
-            const cellLower = this.state.grid[c.id + 15];
-            if (cellLower.nature == nature) {
-                this.bookingCellPress(cellLower);
+            if (c.id + 15 <= 420) {
+                const cellLower = this.state.grid[c.id + 15];
+                if (cellLower.nature == nature) {
+                    this.bookingCellPress(cellLower);
+                }
             }
-        }
 
-        if (c.id - 15 >= 1) {
-            const cellUpper = this.state.grid[c.id - 15];
-            if (cellUpper.nature == nature) {
-                this.bookingCellPress(cellUpper);
+            if (c.id - 15 >= 1) {
+                const cellUpper = this.state.grid[c.id - 15];
+                if (cellUpper.nature == nature) {
+                    this.bookingCellPress(cellUpper);
+                }
             }
+            this.setState({
+                bookedOrReservedOnce: false,
+            });
+        } else if (this.state.selectedIndex != 6 && !c.isBooked) {
+            if (this.state.bookedOrReservedOnce) {
+                Alert.alert("You have already booked a seat!");
+                return;
+            }
+            const cell = this.state.grid[c.id];
+            const nature = cell.nature;
+            const newCell = {
+                ...cell,
+                isBooked: true,
+                seatId: this.props.user.userId,
+            };
+            const newGrid = this.state.grid;
+            newGrid[c.id] = newCell;
+            this.setState({
+                grid: newGrid,
+            });
+
+            if (c.id - 1 >= 1) {
+                const cellLeft = this.state.grid[c.id - 1];
+                if (cellLeft.nature == nature) {
+                    this.bookingCellPress(cellLeft);
+                }
+            }
+
+            if (c.id + 1 < 420) {
+                const cellRight = this.state.grid[c.id + 1];
+                if (cellRight.nature == nature) {
+                    this.bookingCellPress(cellRight);
+                }
+            }
+
+            if (c.id + 15 <= 420) {
+                const cellLower = this.state.grid[c.id + 15];
+                if (cellLower.nature == nature) {
+                    this.bookingCellPress(cellLower);
+                }
+            }
+
+            if (c.id - 15 >= 1) {
+                const cellUpper = this.state.grid[c.id - 15];
+                if (cellUpper.nature == nature) {
+                    this.bookingCellPress(cellUpper);
+                }
+            }
+            this.setState({
+                bookedOrReservedOnce: true,
+            });
         }
     };
 
     storeBookingCellPress = (c) => {
-        if (c.nature == "none" || c.nature != "stall" || c.isStoreBooked) {
+        if (c.nature == "none" || c.nature != "stall") {
             return;
         }
-        const cell = this.state.grid[c.id];
-        const nature = cell.nature;
-        const newCell = { ...cell, isStoreBooked: true };
-        const newGrid = this.state.grid;
-        newGrid[c.id] = newCell;
-        this.setState({
-            grid: newGrid,
-        });
+        if (
+            this.state.selectedIndex == 6 &&
+            c.isStoreBooked &&
+            c.stallId == this.props.user.userId
+        ) {
+            const cell = this.state.grid[c.id];
+            const nature = cell.nature;
+            const newCell = { ...cell, isStoreBooked: false, stallId: null };
+            const newGrid = this.state.grid;
+            newGrid[c.id] = newCell;
+            this.setState({
+                grid: newGrid,
+            });
 
-        if (c.id - 1 >= 1 && (c.id - 1) % 15 != 0) {
-            const cellLeft = this.state.grid[c.id - 1];
-            if (cellLeft.nature == nature) {
-                this.storeBookingCellPress(cellLeft);
+            if (c.id - 1 >= 1 && (c.id - 1) % 15 != 0) {
+                const cellLeft = this.state.grid[c.id - 1];
+                if (cellLeft.nature == nature) {
+                    this.storeBookingCellPress(cellLeft);
+                }
             }
-        }
 
-        if (c.id + 1 < 420 && c.id % 15 != 0) {
-            const cellRight = this.state.grid[c.id + 1];
-            if (cellRight.nature == nature) {
-                this.storeBookingCellPress(cellRight);
+            if (c.id + 1 < 420 && c.id % 15 != 0) {
+                const cellRight = this.state.grid[c.id + 1];
+                if (cellRight.nature == nature) {
+                    this.storeBookingCellPress(cellRight);
+                }
             }
-        }
 
-        if (c.id + 15 <= 420) {
-            const cellLower = this.state.grid[c.id + 15];
-            if (cellLower.nature == nature) {
-                this.storeBookingCellPress(cellLower);
+            if (c.id + 15 <= 420) {
+                const cellLower = this.state.grid[c.id + 15];
+                if (cellLower.nature == nature) {
+                    this.storeBookingCellPress(cellLower);
+                }
             }
-        }
 
-        if (c.id - 15 >= 1) {
-            const cellUpper = this.state.grid[c.id - 15];
-            if (cellUpper.nature == nature) {
-                this.storeBookingCellPress(cellUpper);
+            if (c.id - 15 >= 1) {
+                const cellUpper = this.state.grid[c.id - 15];
+                if (cellUpper.nature == nature) {
+                    this.storeBookingCellPress(cellUpper);
+                }
             }
+
+            this.setState({
+                bookedOrReservedOnce: false,
+            });
+        } else if (this.state.selectedIndex != 6 && !c.isStoreBooked) {
+            if (this.state.bookedOrReservedOnce) {
+                Alert.alert("You have already registered your stall");
+                return;
+            }
+            const cell = this.state.grid[c.id];
+            const nature = cell.nature;
+            const newCell = {
+                ...cell,
+                isStoreBooked: true,
+                stallId: this.props.user.userId,
+            };
+            const newGrid = this.state.grid;
+            newGrid[c.id] = newCell;
+            this.setState({
+                grid: newGrid,
+            });
+
+            if (c.id - 1 >= 1 && (c.id - 1) % 15 != 0) {
+                const cellLeft = this.state.grid[c.id - 1];
+                if (cellLeft.nature == nature) {
+                    this.storeBookingCellPress(cellLeft);
+                }
+            }
+
+            if (c.id + 1 < 420 && c.id % 15 != 0) {
+                const cellRight = this.state.grid[c.id + 1];
+                if (cellRight.nature == nature) {
+                    this.storeBookingCellPress(cellRight);
+                }
+            }
+
+            if (c.id + 15 <= 420) {
+                const cellLower = this.state.grid[c.id + 15];
+                if (cellLower.nature == nature) {
+                    this.storeBookingCellPress(cellLower);
+                }
+            }
+
+            if (c.id - 15 >= 1) {
+                const cellUpper = this.state.grid[c.id - 15];
+                if (cellUpper.nature == nature) {
+                    this.storeBookingCellPress(cellUpper);
+                }
+            }
+            this.setState({
+                bookedOrReservedOnce: true,
+            });
         }
     };
 
@@ -472,6 +590,11 @@ class SeatingPlan extends React.Component {
             grid: this.state.grid,
         };
         this.props.updateSeatingPlanData(seatingPlan);
+        if (this.state.isBooking) {
+            Alert.alert("Successfully saved your seat!");
+        } else if (this.state.isStoreBooking) {
+            Alert.alert("Successfully reserved your stall!");
+        }
         this.setState({
             isBooking: false,
             isStoreBooking: false,
@@ -527,6 +650,28 @@ class SeatingPlan extends React.Component {
                 ) : this.state.isBooking || this.state.isStoreBooking ? (
                     <View style={styles.seatSelection}>
                         <TouchableOpacity
+                            onPress={() => {
+                                if (this.state.selectedIndex != 6) {
+                                    this.updateIndex(6);
+                                } else {
+                                    this.updateIndex(0);
+                                }
+                            }}
+                            style={styles.seatButtonSelected}
+                        >
+                            {this.props.user.userType == PATRON_USER ? (
+                                this.state.selectedIndex == 6 ? (
+                                    <Text>UnBook</Text>
+                                ) : (
+                                    <Text>Book Now!</Text>
+                                )
+                            ) : this.state.selectedIndex == 6 ? (
+                                <Text>UnReserve</Text>
+                            ) : (
+                                <Text>Reserve Stall</Text>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
                             onPress={this.bookingDonePressed}
                             style={styles.seatButton}
                         >
@@ -536,7 +681,9 @@ class SeatingPlan extends React.Component {
                 ) : (
                     <View style={styles.seatSelection}>
                         <TouchableOpacity
-                            onPress={this.bookingPressed}
+                            onPress={() => {
+                                this.bookingPressed();
+                            }}
                             style={styles.seatButton}
                         >
                             {this.props.user.userType == PATRON_USER ? (
