@@ -7,16 +7,28 @@ import {
     TouchableOpacity,
     Icon,
     ScrollView,
+    Alert,
 } from "react-native";
 import { connect } from "react-redux";
-import { watchSeatingPlanData } from "../../app-redux/actions";
+import {
+    watchSeatingPlanData,
+    FOODCENTRE_USER,
+    PATRON_USER,
+    STALL_USER,
+} from "../../app-redux/actions";
 import { updateSeatingPlanData } from "../../app-redux/actions";
 import Constants from "expo-constants";
 
 export function generateGrid(number) {
     const grid = {};
     for (let i = 1; i <= number; i++) {
-        let cell = { id: i, isStored: false, nature: "none" };
+        let cell = {
+            id: i,
+            isStored: false,
+            nature: "none",
+            isBooked: false,
+            isStoreBooked: false,
+        };
         grid[i] = cell;
     }
     return grid;
@@ -24,13 +36,17 @@ export function generateGrid(number) {
 
 function seatStyle(cell) {
     if (cell.nature == "none") {
-        return styles.buttonnoseat;
+        return styles.buttonNoSeat;
+    } else if (cell.isBooked) {
+        return styles.buttonBookedSeat;
+    } else if (cell.isStoreBooked) {
+        return styles.buttonBookedStall;
     } else if (cell.nature == "2 seater") {
-        return styles.button2seat;
+        return styles.button2Seat;
     } else if (cell.nature == "4 seater") {
-        return styles.button4seat;
+        return styles.button4Seat;
     } else if (cell.nature == "6 seater") {
-        return styles.button6seat;
+        return styles.button6Seat;
     } else if (cell.nature == "stall") {
         return styles.buttonStall;
     } else {
@@ -42,10 +58,15 @@ class SeatingPlan extends React.Component {
     componentDidMount() {
         this.props.watchSeatingPlanData(this.props.route.params.foodCentre.id);
     }
+
     constructor(props) {
         super(props);
         this.state = {
-            selectedIndex: 1,
+            selectedIndex: 0,
+            grid: generateGrid(420),
+            isEditing: false,
+            isBooking: false,
+            isStoreBooking: false,
         };
     }
 
@@ -261,8 +282,96 @@ class SeatingPlan extends React.Component {
                     });
                 }
             }
+        } else if (this.state.isBooking) {
+            this.bookingCellPress(cell);
+        } else if (this.state.isStoreBooking) {
+            this.storeBookingCellPress(cell);
         } else {
             return;
+        }
+    };
+
+    bookingCellPress = (c) => {
+        if (c.nature == "none" || c.nature == "stall" || c.isBooked) {
+            return;
+        }
+        const cell = this.state.grid[c.id];
+        const nature = cell.nature;
+        const newCell = { ...cell, isBooked: true };
+        const newGrid = this.state.grid;
+        newGrid[c.id] = newCell;
+        this.setState({
+            grid: newGrid,
+        });
+
+        if (c.id - 1 >= 1) {
+            const cellLeft = this.state.grid[c.id - 1];
+            if (cellLeft.nature == nature) {
+                this.bookingCellPress(cellLeft);
+            }
+        }
+
+        if (c.id + 1 < 420) {
+            const cellRight = this.state.grid[c.id + 1];
+            if (cellRight.nature == nature) {
+                this.bookingCellPress(cellRight);
+            }
+        }
+
+        if (c.id + 15 <= 420) {
+            const cellLower = this.state.grid[c.id + 15];
+            if (cellLower.nature == nature) {
+                this.bookingCellPress(cellLower);
+            }
+        }
+
+        if (c.id - 15 >= 1) {
+            const cellUpper = this.state.grid[c.id - 15];
+            if (cellUpper.nature == nature) {
+                this.bookingCellPress(cellUpper);
+            }
+        }
+    };
+
+    storeBookingCellPress = (c) => {
+        if (c.nature == "none" || c.nature != "stall" || c.isStoreBooked) {
+            return;
+        }
+        const cell = this.state.grid[c.id];
+        const nature = cell.nature;
+        const newCell = { ...cell, isStoreBooked: true };
+        const newGrid = this.state.grid;
+        newGrid[c.id] = newCell;
+        this.setState({
+            grid: newGrid,
+        });
+
+        if (c.id - 1 >= 1 && (c.id - 1) % 15 != 0) {
+            const cellLeft = this.state.grid[c.id - 1];
+            if (cellLeft.nature == nature) {
+                this.storeBookingCellPress(cellLeft);
+            }
+        }
+
+        if (c.id + 1 < 420 && c.id % 15 != 0) {
+            const cellRight = this.state.grid[c.id + 1];
+            if (cellRight.nature == nature) {
+                this.storeBookingCellPress(cellRight);
+            }
+        }
+
+        if (c.id + 15 <= 420) {
+            const cellLower = this.state.grid[c.id + 15];
+            if (cellLower.nature == nature) {
+                this.storeBookingCellPress(cellLower);
+            }
+        }
+
+        if (c.id - 15 >= 1) {
+            const cellUpper = this.state.grid[c.id - 15];
+            if (cellUpper.nature == nature) {
+                this.storeBookingCellPress(cellUpper);
+            }
         }
     };
 
@@ -315,7 +424,58 @@ class SeatingPlan extends React.Component {
     };
 
     saveSeatingPlan = () => {
-        this.props.updateSeatingPlanData(this.state);
+        const seatingPlan = {
+            foodCentreId: this.props.route.params.foodCentre.id,
+            userId: this.props.user.userId,
+            grid: this.state.grid,
+        };
+        this.props.updateSeatingPlanData(seatingPlan);
+        Alert.alert(
+            "Saving...",
+            "Your seating plan has been saved successfully!",
+            [{ text: "Ok" }],
+            { cancelable: false }
+        );
+        this.setState({
+            isEditing: false,
+        });
+    };
+
+    editPressed = () => {
+        this.setState({
+            grid: this.props.seatingPlanGrid,
+        });
+        this.setState({
+            isEditing: true,
+        });
+    };
+
+    bookingPressed = () => {
+        this.setState({
+            grid: this.props.seatingPlanGrid,
+        });
+        if (this.props.user.userType == STALL_USER) {
+            this.setState({
+                isStoreBooking: true,
+            });
+        } else if (this.props.user.userType == PATRON_USER) {
+            this.setState({
+                isBooking: true,
+            });
+        }
+    };
+
+    bookingDonePressed = () => {
+        const seatingPlan = {
+            foodCentreId: this.props.route.params.foodCentre.id,
+            userId: this.props.user.userId,
+            grid: this.state.grid,
+        };
+        this.props.updateSeatingPlanData(seatingPlan);
+        this.setState({
+            isBooking: false,
+            isStoreBooking: false,
+        });
     };
 
     updateIndex = (selectedIndex) => {
@@ -327,34 +487,84 @@ class SeatingPlan extends React.Component {
     render() {
         return (
             <View style={styles.container}>
-                <View style={styles.seatSelection}>
-                    {[1, 2, 3].map((number) => (
+                {this.props.user.userType == FOODCENTRE_USER ? (
+                    this.state.isEditing ? (
+                        <View style={styles.seatSelection}>
+                            {[1, 2, 3].map((number) => (
+                                <TouchableOpacity
+                                    key={number}
+                                    onPress={() => this.updateIndex(number)}
+                                    style={
+                                        this.state.selectedIndex == number
+                                            ? styles.seatButtonSelected
+                                            : styles.seatButton
+                                    }
+                                >
+                                    <Text>{number * 2} seater</Text>
+                                </TouchableOpacity>
+                            ))}
+                            <TouchableOpacity
+                                onPress={() => this.updateIndex(4)}
+                                style={
+                                    this.state.selectedIndex == 4
+                                        ? styles.seatButtonSelected
+                                        : styles.seatButton
+                                }
+                            >
+                                <Text>stall</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.seatSelection}>
+                            <TouchableOpacity
+                                onPress={this.editPressed}
+                                style={styles.seatButton}
+                            >
+                                <Text>Edit</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )
+                ) : this.state.isBooking || this.state.isStoreBooking ? (
+                    <View style={styles.seatSelection}>
                         <TouchableOpacity
-                            key={number}
-                            onPress={() => this.updateIndex(number)}
-                            style={
-                                this.state.selectedIndex == number
-                                    ? styles.seatButtonSelected
-                                    : styles.seatButton
-                            }
+                            onPress={this.bookingDonePressed}
+                            style={styles.seatButton}
                         >
-                            <Text>{number * 2} seater</Text>
+                            <Text>Done</Text>
                         </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity
-                        onPress={() => this.updateIndex(4)}
-                        style={
-                            this.state.selectedIndex == 4
-                                ? styles.seatButtonSelected
-                                : styles.seatButton
-                        }
-                    >
-                        <Text>stall</Text>
-                    </TouchableOpacity>
-                </View>
+                    </View>
+                ) : (
+                    <View style={styles.seatSelection}>
+                        <TouchableOpacity
+                            onPress={this.bookingPressed}
+                            style={styles.seatButton}
+                        >
+                            {this.props.user.userType == PATRON_USER ? (
+                                <Text>Book Now!</Text>
+                            ) : (
+                                <Text>Reseve Stall</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
                 <View style={styles.grid}>
-                    {this.props.seatingPlanGrid
-                        ? Object.keys(this.props.seatingPlanGrid).map(
+                    {this.state.isEditing
+                        ? Object.keys(this.state.grid).map((index) => (
+                              <TouchableOpacity
+                                  key={index}
+                                  style={seatStyle(this.state.grid[index])}
+                                  onPress={() => {
+                                      this.state.selectedIndex == 5
+                                          ? this.cellPressErase(
+                                                this.state.grid[index]
+                                            )
+                                          : this.cellPress(
+                                                this.state.grid[index]
+                                            );
+                                  }}
+                              />
+                          ))
+                        : Object.keys(this.props.seatingPlanGrid).map(
                               (index) => (
                                   <TouchableOpacity
                                       key={index}
@@ -363,12 +573,12 @@ class SeatingPlan extends React.Component {
                                       )}
                                       onPress={() => {
                                           this.state.selectedIndex == 5
-                                              ? cellPressErase(
+                                              ? this.cellPressErase(
                                                     this.props.seatingPlanGrid[
                                                         index
                                                     ]
                                                 )
-                                              : cellPress(
+                                              : this.cellPress(
                                                     this.props.seatingPlanGrid[
                                                         index
                                                     ]
@@ -376,33 +586,35 @@ class SeatingPlan extends React.Component {
                                       }}
                                   />
                               )
-                          )
-                        : null}
+                          )}
                 </View>
-                <View style={styles.settingsButtons}>
-                    <TouchableOpacity
-                        onPress={() => this.updateIndex(5)}
-                        style={
-                            this.state.selectedIndex == 5
-                                ? styles.seatButtonSelected
-                                : styles.seatButton
-                        }
-                    >
-                        <Text>Erase</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={this.eraseAll}
-                        style={styles.seatButton}
-                    >
-                        <Text>Erase All</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={this.saveSeatingPlan}
-                        style={styles.seatButton}
-                    >
-                        <Text>Save</Text>
-                    </TouchableOpacity>
-                </View>
+                {this.props.user.userType == FOODCENTRE_USER &&
+                this.state.isEditing ? (
+                    <View style={styles.settingsButtons}>
+                        <TouchableOpacity
+                            onPress={() => this.updateIndex(5)}
+                            style={
+                                this.state.selectedIndex == 5
+                                    ? styles.seatButtonSelected
+                                    : styles.seatButton
+                            }
+                        >
+                            <Text>Erase</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={this.eraseAll}
+                            style={styles.seatButton}
+                        >
+                            <Text>Erase All</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={this.saveSeatingPlan}
+                            style={styles.seatButton}
+                        >
+                            <Text>Save</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
             </View>
         );
     }
@@ -433,29 +645,43 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-around",
     },
-    buttonnoseat: {
+    buttonNoSeat: {
         flex: 1,
         padding: 9,
         margin: 1,
         backgroundColor: "grey",
     },
-    button2seat: {
+    button2Seat: {
         flex: 1,
         padding: 9,
         margin: 1,
         backgroundColor: "#FFDFFF",
     },
-    button4seat: {
+    button4Seat: {
         flex: 1,
         padding: 9,
         margin: 1,
         backgroundColor: "#E269FF",
     },
-    button6seat: {
+    button6Seat: {
         flex: 1,
         padding: 9,
         margin: 1,
         backgroundColor: "#FF00FE",
+    },
+    buttonBookedSeat: {
+        flex: 1,
+        padding: 8,
+        margin: 1,
+        borderWidth: 1,
+        backgroundColor: "red",
+    },
+    buttonBookedStall: {
+        flex: 1,
+        padding: 8,
+        margin: 1,
+        borderWidth: 1,
+        backgroundColor: "#171D9B",
     },
     buttonStall: {
         flex: 1,

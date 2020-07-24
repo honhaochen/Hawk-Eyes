@@ -50,6 +50,17 @@ function FCStallPersonalList(props) {
                                     }
                                 />
                                 <MaterialIcons
+                                    name="event-seat"
+                                    style={styles.icon}
+                                    size={33}
+                                    color="black"
+                                    onPress={() =>
+                                        navigation.navigate("Seating Plan", {
+                                            foodCentre: { id: item.parentId },
+                                        })
+                                    }
+                                />
+                                <MaterialIcons
                                     name="delete"
                                     size={33}
                                     style={styles.icon}

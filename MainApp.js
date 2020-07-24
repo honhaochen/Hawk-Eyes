@@ -83,7 +83,7 @@ class MainApp extends React.Component {
     };
 
     render() {
-        if (this.state.isAuthenticated) {
+        if (this.state.isAuthenticated && this.props.user.userType) {
             return (
                 <View style={{ flex: 1 }}>
                     <NavigationContainer>
@@ -230,7 +230,7 @@ const Authentication = (props) => (
             <ScreenStack.Screen
                 name="LoginScreen"
                 component={LoginScreen}
-                options={{ title: "Login" }}
+                options={{ title: "HawkEyes" }}
             />
             <ScreenStack.Screen
                 name="SignUpScreen"
